@@ -1,0 +1,36 @@
+# --- API backend ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9      # required by FastAPI to parse UploadFile/Form
+
+# --- Frontend ---
+streamlit>=1.38
+requests>=2.32
+
+# --- PDF processing ---
+pypdf>=4.3
+langchain-text-splitters>=0.3
+
+# --- Embeddings (local) ---
+# torch is pinned explicitly because it's the actual engine that runs the
+# embedding model's forward pass; sentence-transformers just wraps it.
+# CPU-only is enough for this project (no CUDA required).
+torch>=2.2
+sentence-transformers>=3.0
+
+# --- OCR for scanned / image-heavy PDFs ---
+# pypdfium2 rasterizes PDF pages (pip-only, no Poppler needed).
+# pytesseract is a thin wrapper -- the Tesseract PROGRAM itself is a separate
+# system install, see README. Without it the app still runs, OCR just reports
+# unavailable.
+pypdfium2>=4.30
+pytesseract>=0.3.10
+Pillow>=10.0
+
+# --- Vector DB + LLM ---
+pinecone>=5.0
+groq>=0.11
+
+# --- Shared ---
+python-dotenv>=1.0
+pandas>=2.2

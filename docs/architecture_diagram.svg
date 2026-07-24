@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="830" viewBox="0 0 1200 830" font-family="Arial, sans-serif">
+<rect width="1200" height="830" fill="#ffffff"/>
+<defs>
+<marker id="arrow-6366f1" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#6366f1"/></marker>
+<marker id="arrow-059669" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#059669"/></marker>
+<marker id="arrow-475569" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#475569"/></marker>
+</defs>
+<text x="600.0" y="38" font-size="23" font-weight="800" fill="#111827" text-anchor="middle">RAG System Architecture — FastAPI Backend + Streamlit Frontend</text>
+<text x="600.0" y="60" font-size="13.5" fill="#6b7280" text-anchor="middle">The frontend holds no pipeline logic; it only calls the backend’s REST API over HTTP</text>
+<rect x="40" y="82" width="320" height="66" rx="10" fill="#f5f3ff" stroke="#475569" stroke-width="2"/>
+<text x="200.0" y="109.0" font-size="16" font-weight="700" fill="#1e1b4b" text-anchor="middle" font-family="Arial, sans-serif">Client: Streamlit UI</text>
+<text x="200.0" y="129.0" font-size="12.5" fill="#4338ca" text-anchor="middle" font-family="Arial, sans-serif" font-style="italic">frontend/streamlit_app.py</text>
+<rect x="840" y="82" width="320" height="66" rx="10" fill="#f5f3ff" stroke="#475569" stroke-width="2"/>
+<text x="1000.0" y="109.0" font-size="16" font-weight="700" fill="#1e1b4b" text-anchor="middle" font-family="Arial, sans-serif">API: FastAPI app</text>
+<text x="1000.0" y="129.0" font-size="12.5" fill="#4338ca" text-anchor="middle" font-family="Arial, sans-serif" font-style="italic">backend/main.py  —  /docs (Swagger UI)</text>
+<line x1="360" y1="115.0" x2="828" y2="115.0" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow-475569)"/>
+<text x="600.0" y="107.0" font-size="11.5" fill="#475569" text-anchor="middle" font-style="italic">HTTP / JSON + multipart upload</text>
+<rect x="40" y="203" width="250" height="100" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+<circle cx="62" cy="225" r="14" fill="#6366f1"/>
+<text x="62" y="230" font-size="14" font-weight="700" fill="white" text-anchor="middle" font-family="Arial, sans-serif">1</text>
+<text x="165.0" y="247.0" font-size="16" font-weight="700" fill="#1e1b4b" text-anchor="middle" font-family="Arial, sans-serif">1. PDF Upload</text>
+<text x="165.0" y="267.0" font-size="12.5" fill="#4338ca" text-anchor="middle" font-family="Arial, sans-serif" font-style="italic">POST /api/documents/upload</text>
+<rect x="330" y="203" width="250" height="100" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+<circle cx="352" cy="225" r="14" fill="#6366f1"/>
+<text x="352" y="230" font-size="14" font-weight="700" fill="white" text-anchor="middle" font-family="Arial, sans-serif">2</text>
+<text x="455.0" y="247.0" font-size="16" font-weight="700" fill="#1e1b4b" text-anchor="middle" font-family="Arial, sans-serif">2. Text Extraction</text>
+<text x="455.0" y="267.0" font-size="12.5" fill="#4338ca" text-anchor="middle" font-family="Arial, sans-serif" font-style="italic">services/pdf_loader.py</text>
+<rect x="620" y="203" width="250" height="100" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+<circle cx="642" cy="225" r="14" fill="#6366f1"/>
+<text x="642" y="230" font-size="14" font-weight="700" fill="white" text-anchor="middle" font-family="Arial, sans-serif">3</text>
+<text x="745.0" y="247.0" font-size="16" font-weight="700" fill="#1e1b4b" text-anchor="middle" font-family="Arial, sans-serif">3. Text Chunking</text>
+<text x="745.0" y="267.0" font-size="12.5" fill="#4338ca" text-anchor="middle" font-family="Arial, sans-serif" font-style="italic">services/text_chunker.py</text>
+<rect x="910" y="203" width="250" height="100" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+<circle cx="932" cy="225" r="14" fill="#6366f1"/>
+<text x="932" y="230" font-size="14" font-weight="700" fill="white" text-anchor="middle" font-family="Arial, sans-serif">4</text>
+<text x="1035.0" y="247.0" font-size="16" font-weight="700" fill="#1e1b4b" text-anchor="middle" font-family="Arial, sans-serif">4. Embedding Generation</text>
+<text x="1035.0" y="267.0" font-size="12.5" fill="#4338ca" text-anchor="middle" font-family="Arial, sans-serif" font-style="italic">services/embedder.py</text>
+<rect x="1022" y="275" width="128" height="20" rx="10" fill="#c2410c"/>
+<text x="1086.0" y="289" font-size="10.5" font-weight="700" fill="white" text-anchor="middle" font-family="Arial, sans-serif">LOCAL: TORCH</text>
+<line x1="290" y1="253.0" x2="320" y2="253.0" stroke="#6366f1" stroke-width="2.5" marker-end="url(#arrow-6366f1)"/>
+<line x1="580" y1="253.0" x2="610" y2="253.0" stroke="#6366f1" stroke-width="2.5" marker-end="url(#arrow-6366f1)"/>
+<line x1="870" y1="253.0" x2="900" y2="253.0" stroke="#6366f1" stroke-width="2.5" marker-end="url(#arrow-6366f1)"/>
+<line x1="165.0" y1="148" x2="165.0" y2="193" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow-475569)"/>
+<polyline points="1035.0,303 1035.0,363 165.0,363 165.0,433" fill="none" stroke="#6366f1" stroke-width="2.5" marker-end="url(#arrow-6366f1)"/>
+<rect x="40" y="443" width="250" height="100" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+<circle cx="62" cy="465" r="14" fill="#059669"/>
+<text x="62" y="470" font-size="14" font-weight="700" fill="white" text-anchor="middle" font-family="Arial, sans-serif">5</text>
+<text x="165.0" y="487.0" font-size="16" font-weight="700" fill="#1e1b4b" text-anchor="middle" font-family="Arial, sans-serif">5. Pinecone Indexing</text>
+<text x="165.0" y="507.0" font-size="12.5" fill="#4338ca" text-anchor="middle" font-family="Arial, sans-serif" font-style="italic">services/vector_store.py + registry.py</text>
+<rect x="134" y="515" width="146" height="20" rx="10" fill="#1d4ed8"/>
+<text x="207.0" y="529" font-size="10.5" font-weight="700" fill="white" text-anchor="middle" font-family="Arial, sans-serif">PINECONE CLOUD</text>
+<rect x="330" y="443" width="250" height="100" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+<circle cx="352" cy="465" r="14" fill="#059669"/>
+<text x="352" y="470" font-size="14" font-weight="700" fill="white" text-anchor="middle" font-family="Arial, sans-serif">6</text>
+<text x="455.0" y="487.0" font-size="16" font-weight="700" fill="#1e1b4b" text-anchor="middle" font-family="Arial, sans-serif">6. Semantic Retrieval</text>
+<text x="455.0" y="507.0" font-size="12.5" fill="#4338ca" text-anchor="middle" font-family="Arial, sans-serif" font-style="italic">services/retriever.py</text>
+<rect x="620" y="443" width="250" height="100" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+<circle cx="642" cy="465" r="14" fill="#059669"/>
+<text x="642" y="470" font-size="14" font-weight="700" fill="white" text-anchor="middle" font-family="Arial, sans-serif">7</text>
+<text x="745.0" y="487.0" font-size="16" font-weight="700" fill="#1e1b4b" text-anchor="middle" font-family="Arial, sans-serif">7. LLM Response Gen.</text>
+<text x="745.0" y="507.0" font-size="12.5" fill="#4338ca" text-anchor="middle" font-family="Arial, sans-serif" font-style="italic">services/generator.py</text>
+<rect x="750" y="515" width="110" height="20" rx="10" fill="#b91c1c"/>
+<text x="805.0" y="529" font-size="10.5" font-weight="700" fill="white" text-anchor="middle" font-family="Arial, sans-serif">GROQ CLOUD</text>
+<rect x="910" y="443" width="250" height="100" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+<circle cx="932" cy="465" r="14" fill="#059669"/>
+<text x="932" y="470" font-size="14" font-weight="700" fill="white" text-anchor="middle" font-family="Arial, sans-serif">8</text>
+<text x="1035.0" y="487.0" font-size="16" font-weight="700" fill="#1e1b4b" text-anchor="middle" font-family="Arial, sans-serif">8. Answer + Sources</text>
+<text x="1035.0" y="507.0" font-size="12.5" fill="#4338ca" text-anchor="middle" font-family="Arial, sans-serif" font-style="italic">GET response → QueryResponse JSON</text>
+<line x1="290" y1="493.0" x2="320" y2="493.0" stroke="#059669" stroke-width="2.5" marker-end="url(#arrow-059669)"/>
+<line x1="580" y1="493.0" x2="610" y2="493.0" stroke="#059669" stroke-width="2.5" marker-end="url(#arrow-059669)"/>
+<line x1="870" y1="493.0" x2="900" y2="493.0" stroke="#059669" stroke-width="2.5" marker-end="url(#arrow-059669)"/>
+<text x="1035.0" y="573" font-size="11.5" fill="#475569" text-anchor="middle" font-style="italic">↓ Returned as QueryResponse JSON, rendered by the Streamlit UI in two separate sections (Answer, then Sources)</text>
+<rect x="40" y="613" width="1120" height="92" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+<text x="60" y="639" font-size="14" font-weight="700" fill="#0f172a">Hallucination guardrails (enforced between stages 6 and 7):</text>
+<text x="60" y="663" font-size="13" fill="#334155">1) Similarity-threshold filtering drops weak matches after retrieval &#8226; 2) Zero surviving chunks short-circuits before the LLM is ever called</text>
+<text x="60" y="683" font-size="13" fill="#334155">3) Strict system prompt restricts the LLM to supplied context only &#8226; 4) Fixed refusal sentence when context is insufficient &#8226; 5) temperature = 0</text>
+</svg>
