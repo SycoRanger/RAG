@@ -3,696 +3,348 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2216%22 fill=%22%2316202B%22/><text x=%2250%22 y=%2268%22 font-size=%2260%22 fill=%22%23F7F8FA%22 text-anchor=%22middle%22 font-family=%22Georgia,serif%22>&#167;</text></svg>">
-<title>Document Evidence — RAG over PDFs</title>
-<style>
-  :root {
-    --ink:      #16202B;
-    --paper:    #F7F8FA;
-    --card:     #FFFFFF;
-    --rule:     #DDE3EA;
-    --seal:     #2F5D8C;
-    --seal-dk:  #24487038;
-    --verify:   #1F7A5C;
-    --absent:   #8A6D3B;
-    --danger:   #A23B3B;
-    --muted:    #64748B;
-    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
-    --sans: -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--paper); color: var(--ink);
-    font-family: var(--sans); font-size: 15px; line-height: 1.5;
-  }
-  .shell {
-    max-width: 1180px; margin: 0 auto; padding: 28px 22px 60px;
-    display: grid; grid-template-columns: 272px 1fr; gap: 26px;
-  }
-  @media (max-width: 880px) {
-    .shell { grid-template-columns: 1fr; }
-    .sidebar { order: 2; }
-  }
-
-  /* ---------- masthead ---------- */
-  .masthead { grid-column: 1 / -1; border-bottom: 2px solid var(--ink); padding-bottom: 12px; }
-  .masthead h1 {
-    font-size: 1.7rem; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 3px 0;
-  }
-  .masthead .sub {
-    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.09em;
-    text-transform: uppercase; color: var(--muted);
-  }
-  .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-  .pill {
-    font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.03em;
-    padding: 3px 9px; border-radius: 3px; border: 1px solid var(--rule);
-    background: var(--card); color: var(--muted); white-space: nowrap;
-  }
-  .pill.on  { border-color: var(--verify); color: var(--verify); }
-  .pill.off { border-color: var(--absent); color: var(--absent); }
-
-  /* ---------- sidebar ---------- */
-  .sidebar { display: flex; flex-direction: column; gap: 18px; }
-  .panel {
-    background: var(--card); border: 1px solid var(--rule); border-radius: 6px;
-    padding: 14px 15px;
-  }
-  .panel h3 {
-    font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--muted); margin: 0 0 10px 0; font-weight: 700;
-  }
-  label.field { display: block; font-size: 0.8rem; color: var(--muted); margin: 10px 0 4px; }
-  label.field:first-child { margin-top: 0; }
-  input[type=text], input[type=number] {
-    width: 100%; padding: 7px 9px; border: 1px solid var(--rule); border-radius: 4px;
-    font-family: var(--sans); font-size: 0.86rem; background: #fff; color: var(--ink);
-  }
-  input[type=text]:focus, input[type=number]:focus, button:focus-visible, .tab:focus-visible {
-    outline: 2px solid var(--seal); outline-offset: 1px;
-  }
-  input[type=range] { width: 100%; accent-color: var(--seal); }
-  .range-row { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); }
-  .range-val { font-family: var(--mono); color: var(--ink); }
-
-  .segmented { display: flex; border: 1px solid var(--rule); border-radius: 5px; overflow: hidden; }
-  .segmented button {
-    flex: 1; border: none; background: #fff; padding: 7px 6px; font-size: 0.74rem;
-    color: var(--muted); cursor: pointer; border-right: 1px solid var(--rule);
-    font-family: var(--sans);
-  }
-  .segmented button:last-child { border-right: none; }
-  .segmented button.active { background: var(--seal); color: #fff; }
-  .hint { font-size: 0.72rem; color: var(--muted); margin-top: 6px; line-height: 1.4; }
-  .warn-inline {
-    font-size: 0.72rem; color: var(--absent); margin-top: 6px; padding: 6px 8px;
-    background: #FBF4E7; border: 1px solid #EAD9AE; border-radius: 4px;
-  }
-
-  .doc-list { font-size: 0.82rem; }
-  .doc-list label { display: flex; gap: 7px; align-items: baseline; padding: 3px 0; cursor: pointer; }
-  .doc-list input[type=checkbox] { margin-top: 2px; accent-color: var(--seal); }
-  .doc-name { overflow-wrap: anywhere; }
-
-  button.btn {
-    font-family: var(--sans); font-size: 0.84rem; font-weight: 600; cursor: pointer;
-    border-radius: 5px; padding: 9px 14px; border: 1px solid var(--seal);
-    background: var(--seal); color: #fff; width: 100%;
-  }
-  button.btn:hover { background: #274e78; }
-  button.btn:disabled { opacity: 0.55; cursor: default; }
-  button.btn.ghost { background: #fff; color: var(--danger); border-color: var(--danger); }
-  button.btn.ghost:hover { background: #FBEEEE; }
-  details.danger { margin-top: 2px; }
-  details.danger summary {
-    font-size: 0.76rem; color: var(--muted); cursor: pointer; list-style: none;
-  }
-  details.danger summary::-webkit-details-marker { display: none; }
-  details.danger summary::before { content: "▸ "; }
-  details.danger[open] summary::before { content: "▾ "; }
-  details.danger .inner { margin-top: 8px; }
-
-  /* ---------- main / tabs ---------- */
-  .main { min-width: 0; }
-  .tabbar { display: flex; gap: 2px; border-bottom: 1px solid var(--rule); margin-bottom: 18px; }
-  .tab {
-    font-family: var(--sans); font-size: 0.85rem; font-weight: 600; color: var(--muted);
-    background: none; border: none; padding: 10px 4px; margin-right: 20px; cursor: pointer;
-    border-bottom: 2px solid transparent; position: relative; top: 1px;
-  }
-  .tab.active { color: var(--ink); border-bottom-color: var(--seal); }
-  .tabpanel { display: none; }
-  .tabpanel.active { display: block; }
-
-  /* ---------- empty state ---------- */
-  .empty {
-    border: 1px dashed var(--rule); border-radius: 6px; padding: 26px; text-align: center;
-    color: var(--muted); font-size: 0.9rem; background: var(--card);
-  }
-
-  /* ---------- ask tab ---------- */
-  .ask-row { display: flex; gap: 8px; margin-bottom: 16px; }
-  .ask-row input[type=text] { flex: 1; font-size: 0.95rem; padding: 10px 12px; }
-  .ask-row button { width: auto; padding: 10px 20px; }
-
-  .answer {
-    border-left: 3px solid var(--verify); background: var(--card);
-    padding: 16px 18px; border-radius: 0 5px 5px 0;
-    border-top: 1px solid var(--rule); border-right: 1px solid var(--rule);
-    border-bottom: 1px solid var(--rule); margin-bottom: 4px;
-  }
-  .answer.absent { border-left-color: var(--absent); }
-  .eyebrow {
-    font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.1em;
-    text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 7px;
-  }
-  .answer .body { font-size: 1.02rem; line-height: 1.6; }
-
-  .meter { margin-top: 10px; }
-  .meter .track { height: 3px; background: var(--rule); border-radius: 2px; overflow: hidden; }
-  .meter .fill { height: 3px; background: var(--seal); }
-  .meter .lbl { font-family: var(--mono); font-size: 0.66rem; color: var(--muted); margin-top: 4px; display: block; }
-
-  h4.section-title { font-size: 0.9rem; margin: 22px 0 10px; }
-
-  .exhibit {
-    border: 1px solid var(--rule); background: var(--card); border-radius: 5px;
-    padding: 12px 14px; margin-bottom: 9px;
-  }
-  .exhibit .head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; align-items: baseline; }
-  .stamp {
-    font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.05em; color: var(--seal);
-    border: 1px solid var(--seal); padding: 2px 7px; border-radius: 3px; white-space: nowrap;
-  }
-  .docname { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); text-align: right; }
-  .excerpt { font-size: 0.87rem; line-height: 1.55; border-left: 2px solid var(--rule); padding-left: 10px; }
-
-  /* ---------- upload / dropzone ---------- */
-  .dropzone {
-    border: 2px dashed var(--rule); border-radius: 8px; padding: 34px 20px;
-    text-align: center; color: var(--muted); cursor: pointer; background: var(--card);
-    transition: border-color .15s, background .15s;
-  }
-  .dropzone.drag { border-color: var(--seal); background: #F2F6FA; }
-  .dropzone strong { color: var(--ink); }
-  .dropzone input[type=file] { display: none; }
-  .file-row {
-    display: flex; justify-content: space-between; gap: 10px; padding: 8px 0;
-    border-bottom: 1px dotted var(--rule); font-size: 0.84rem;
-  }
-  .file-row .status { font-family: var(--mono); font-size: 0.72rem; white-space: nowrap; }
-  .status.ok { color: var(--verify); } .status.err { color: var(--danger); } .status.pending { color: var(--muted); }
-  .doc-index-list { font-size: 0.86rem; margin-top: 4px; }
-  .doc-index-list li { padding: 3px 0; }
-
-  /* ---------- history / system ---------- */
-  .kv { display: flex; justify-content: space-between; gap: 14px; border-bottom: 1px dotted var(--rule); padding: 7px 0; font-size: 0.85rem; }
-  .kv .k { color: var(--muted); } .kv .v { font-family: var(--mono); text-align: right; }
-  table.logs { width: 100%; border-collapse: collapse; font-size: 0.78rem; margin-top: 6px; }
-  table.logs th { text-align: left; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--rule); padding: 6px 8px; }
-  table.logs td { padding: 6px 8px; border-bottom: 1px dotted var(--rule); font-family: var(--mono); }
-  pre.api-ref {
-    background: #0F172A; color: #E2E8F0; padding: 14px 16px; border-radius: 6px;
-    font-family: var(--mono); font-size: 0.76rem; overflow-x: auto; line-height: 1.6;
-  }
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
-  .spinner {
-    display: inline-block; width: 14px; height: 14px; border: 2px solid var(--rule);
-    border-top-color: var(--seal); border-radius: 50%; animation: spin .7s linear infinite;
-    vertical-align: -2px; margin-right: 6px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .toast {
-    font-size: 0.82rem; padding: 9px 12px; border-radius: 5px; margin-bottom: 10px;
-    border: 1px solid var(--rule);
-  }
-  .toast.ok { background: #F0FAF6; border-color: var(--verify); color: #145C43; }
-  .toast.err { background: #FBEEEE; border-color: var(--danger); color: #7A2A2A; }
-</style>
+<title>RAG Console — Intermediate RAG System</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%236366f1%22/><text x=%2250%22 y=%2268%22 font-size=%2255%22 fill=%22white%22 text-anchor=%22middle%22 font-family=%22Arial%22>R</text></svg>">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+<div class="bg-glow"><span></span><span></span><span></span></div>
+
+<div class="toast-stack" id="toast-stack"></div>
+
 <div class="shell">
-  <div class="masthead">
-    <h1>Document Evidence</h1>
-    <div class="sub">answers traced to the page they came from</div>
-    <div class="pills" id="pills">
-      <span class="pill">connecting…</span>
-    </div>
-  </div>
 
-  <div class="sidebar">
-    <div class="panel">
-      <h3>Knowledge base</h3>
-      <label class="field" for="namespace">Namespace</label>
-      <input type="text" id="namespace" spellcheck="false">
-      <div class="hint">Documents indexed under the same namespace are searched together.</div>
-    </div>
+  <!-- ============================= SIDEBAR ============================= -->
+  <aside class="sidebar" id="sidebar">
+    <button class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar"><i class="fa-solid fa-chevron-left"></i></button>
 
-    <div class="panel">
-      <h3>Reading</h3>
-      <label class="field">OCR for scanned pages</label>
-      <div class="segmented" id="ocr-mode">
-        <button data-val="auto" class="active">Auto</button>
-        <button data-val="off">Off</button>
-        <button data-val="force">Always</button>
-      </div>
-      <div class="hint">Auto reads typed pages directly and OCRs only the pages with no text.</div>
-      <div class="warn-inline" id="ocr-warn" style="display:none"></div>
-    </div>
-
-    <div class="panel">
-      <h3>Chunking</h3>
-      <label class="field">Chunk size <span class="range-val" id="chunk-size-val">800</span> chars</label>
-      <input type="range" id="chunk-size" min="200" max="2000" step="50" value="800">
-      <label class="field">Chunk overlap <span class="range-val" id="chunk-overlap-val">120</span> chars</label>
-      <input type="range" id="chunk-overlap" min="0" max="400" step="20" value="120">
-    </div>
-
-    <div class="panel">
-      <h3>Retrieval</h3>
-      <label class="field">Passages retrieved <span class="range-val" id="top-k-val">5</span></label>
-      <input type="range" id="top-k" min="1" max="15" step="1" value="5">
-      <label class="field">Similarity floor <span class="range-val" id="threshold-val">0.25</span></label>
-      <input type="range" id="threshold" min="0" max="1" step="0.05" value="0.25">
-      <div class="hint">Passages scoring below this never reach the language model.</div>
-    </div>
-
-    <div class="panel" id="filter-panel" style="display:none">
-      <h3>Narrow the search</h3>
-      <div class="doc-list" id="doc-filter-list"></div>
-    </div>
-
-    <div class="panel">
-      <details class="danger">
-        <summary>Clear this knowledge base</summary>
-        <div class="inner">
-          <div class="hint" style="margin-bottom:8px">Deletes every indexed passage in this namespace. Can't be undone.</div>
-          <button class="btn ghost" id="clear-btn">Delete all passages</button>
-        </div>
-      </details>
-    </div>
-  </div>
-
-  <div class="main">
-    <div class="tabbar">
-      <button class="tab active" data-tab="ask">Ask</button>
-      <button class="tab" data-tab="add">Add documents</button>
-      <button class="tab" data-tab="history">History</button>
-      <button class="tab" data-tab="system">System</button>
-    </div>
-
-    <!-- ASK -->
-    <div class="tabpanel active" id="tab-ask">
-      <div id="ask-empty" class="empty">No documents in this knowledge base yet.<br>Open <strong>Add documents</strong> to index a PDF first.</div>
-      <div id="ask-ui" style="display:none">
-        <div class="ask-row">
-          <input type="text" id="question" placeholder="What is the termination notice period?">
-          <button class="btn" id="ask-btn" style="width:auto">Ask</button>
-        </div>
-        <div id="ask-result"></div>
+    <div class="sidebar-brand">
+      <div class="mark">R</div>
+      <div class="brand-text">
+        <div class="name">RAG Console</div>
+        <div class="tag">Pinecone · Groq</div>
       </div>
     </div>
 
-    <!-- ADD -->
-    <div class="tabpanel" id="tab-add">
+    <nav>
+      <div class="nav-group">
+        <div class="nav-group-label">Workspace</div>
+        <div class="nav-item active" data-view="dashboard"><i class="fa-solid fa-grid-2"></i><span class="nav-label">Dashboard</span></div>
+        <div class="nav-item" data-view="upload"><i class="fa-solid fa-cloud-arrow-up"></i><span class="nav-label">Upload Document</span></div>
+        <div class="nav-item" data-view="library"><i class="fa-solid fa-folder-open"></i><span class="nav-label">Document Library</span><span class="nav-badge" id="nav-doc-count">0</span></div>
+        <div class="nav-item" data-view="ask"><i class="fa-solid fa-comment-dots"></i><span class="nav-label">Ask Questions</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Insights</div>
+        <div class="nav-item" data-view="history"><i class="fa-solid fa-clock-rotate-left"></i><span class="nav-label">Retrieval History</span></div>
+        <div class="nav-item" data-view="analytics"><i class="fa-solid fa-chart-line"></i><span class="nav-label">Analytics</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">System</div>
+        <div class="nav-item" data-view="settings"><i class="fa-solid fa-sliders"></i><span class="nav-label">Settings</span></div>
+        <div class="nav-item" data-view="about"><i class="fa-solid fa-circle-info"></i><span class="nav-label">About Project</span></div>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="conn-row"><span class="conn-dot" id="dot-pinecone"></span><span class="foot-text">Pinecone</span></div>
+      <div class="conn-row"><span class="conn-dot" id="dot-groq"></span><span class="foot-text">Groq</span></div>
+      <div class="conn-row"><span class="conn-dot" id="dot-ocr"></span><span class="foot-text">OCR</span></div>
+      <div class="version-tag foot-text">v1.0.0 · build 2026.07</div>
+    </div>
+  </aside>
+
+  <!-- ============================= MAIN ============================= -->
+  <main class="main">
+
+    <div class="topbar">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button class="icon-btn mobile-menu-btn" id="mobile-menu-btn"><i class="fa-solid fa-bars"></i></button>
+        <div class="title-block">
+          <h1 id="view-title">Dashboard</h1>
+          <p id="view-subtitle">Live overview of your RAG pipeline</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div class="namespace-pill">
+          <i class="fa-solid fa-layer-group"></i>
+          <input type="text" id="namespace-input" spellcheck="false" title="Knowledge base namespace">
+        </div>
+        <button class="icon-btn theme-toggle" id="theme-toggle" title="Toggle theme">
+          <i class="fa-solid fa-moon"></i><i class="fa-solid fa-sun"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- ======================= DASHBOARD VIEW ======================= -->
+    <section class="view active" id="view-dashboard">
+      <div class="hero" data-aos="fade-up">
+        <span class="demo-badge"><i class="fa-solid fa-graduation-cap"></i> Academic Demo · Live Backend</span>
+        <h1 style="margin-top:14px;">Retrieval-Augmented Generation, grounded and traceable.</h1>
+        <p>Upload a PDF, ask a question, and get an answer sourced strictly from that document — with page numbers, chunk IDs, and similarity scores for every claim. No hallucinated answers: if it's not in the document, the system says so.</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary" data-goto="upload"><i class="fa-solid fa-cloud-arrow-up"></i> Upload PDF</button>
+          <button class="btn btn-ghost" data-goto="ask"><i class="fa-solid fa-comment-dots"></i> Start Query</button>
+          <button class="btn btn-ghost" data-goto="dashboard" id="view-pipeline-btn"><i class="fa-solid fa-diagram-project"></i> View Pipeline</button>
+        </div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="card hoverable kpi-card" data-aos="fade-up" data-aos-delay="0">
+          <div class="kpi-icon"><i class="fa-solid fa-file-lines"></i></div>
+          <div class="kpi-value" data-count="0" id="kpi-docs">0</div>
+          <div class="kpi-label">Uploaded PDFs</div>
+        </div>
+        <div class="card hoverable kpi-card" data-aos="fade-up" data-aos-delay="60">
+          <div class="kpi-icon"><i class="fa-solid fa-puzzle-piece"></i></div>
+          <div class="kpi-value" data-count="0" id="kpi-chunks">0</div>
+          <div class="kpi-label">Total Chunks</div>
+        </div>
+        <div class="card hoverable kpi-card" data-aos="fade-up" data-aos-delay="120">
+          <div class="kpi-icon"><i class="fa-solid fa-cube"></i></div>
+          <div class="kpi-value" data-count="0" id="kpi-vectors">0</div>
+          <div class="kpi-label">Stored Vectors</div>
+        </div>
+        <div class="card hoverable kpi-card" data-aos="fade-up" data-aos-delay="180">
+          <div class="kpi-icon"><i class="fa-solid fa-message"></i></div>
+          <div class="kpi-value" data-count="0" id="kpi-queries">0</div>
+          <div class="kpi-label">Queries Asked</div>
+        </div>
+        <div class="card hoverable kpi-card" data-aos="fade-up" data-aos-delay="240">
+          <div class="kpi-icon"><i class="fa-solid fa-gauge-high"></i></div>
+          <div class="kpi-value" data-count="0" data-suffix="%" id="kpi-confidence">0%</div>
+          <div class="kpi-label">Avg. Confidence</div>
+        </div>
+      </div>
+
+      <h2 class="section-title" data-aos="fade-up"><i class="fa-solid fa-diagram-project"></i> RAG Pipeline</h2>
+      <p class="section-sub">Lights up in real time as you upload documents or ask questions.</p>
+      <div class="card" style="padding:22px 18px;" data-aos="fade-up">
+        <div class="pipeline" id="pipeline-visual">
+          <!-- populated by JS: 8 stages -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= UPLOAD VIEW ======================= -->
+    <section class="view" id="view-upload">
+      <h2 class="section-title"><i class="fa-solid fa-cloud-arrow-up"></i> Upload a document</h2>
+      <p class="section-sub">PDFs up to 20MB. Scanned/image pages are handled automatically by OCR (mode set below).</p>
+
       <div class="dropzone" id="dropzone">
-        <div><strong>Drop PDFs here</strong>, or click to choose files</div>
-        <div class="hint">Up to 20 MB each. Scanned pages are handled automatically by OCR (mode set in the sidebar).</div>
+        <div class="dz-icon"><i class="fa-solid fa-file-pdf"></i></div>
+        <h3>Drop your PDF here</h3>
+        <p>or click to browse · max 20MB per file</p>
         <input type="file" id="file-input" accept="application/pdf" multiple>
       </div>
-      <div id="upload-progress" style="margin-top:14px"></div>
+      <div id="file-list"></div>
 
-      <h4 class="section-title">In this knowledge base</h4>
-      <div id="doc-index-container"><div class="empty">Nothing indexed yet.</div></div>
-    </div>
-
-    <!-- HISTORY -->
-    <div class="tabpanel" id="tab-history">
-      <h4 class="section-title" style="margin-top:0">This session</h4>
-      <div id="session-history"><div class="empty">No questions asked yet.</div></div>
-
-      <h4 class="section-title">Saved query log</h4>
-      <div class="hint" style="margin-bottom:6px">Written to data/logs/query_log.csv on the backend, kept across restarts.</div>
-      <div id="logs-container"><div class="empty">Log is empty.</div></div>
-    </div>
-
-    <!-- SYSTEM -->
-    <div class="tabpanel" id="tab-system">
-      <div class="two-col">
-        <div>
-          <h4 class="section-title" style="margin-top:0">Services</h4>
-          <div id="services-kv"></div>
+      <h2 class="section-title"><i class="fa-solid fa-sliders"></i> Reading &amp; indexing configuration</h2>
+      <div class="card" style="padding:22px;">
+        <div class="config-grid">
+          <div>
+            <div class="field-label">OCR mode</div>
+            <div class="segmented" id="ocr-mode-upload">
+              <button data-val="auto" class="active">Auto</button>
+              <button data-val="off">Off</button>
+              <button data-val="force">Always</button>
+            </div>
+            <div class="field-hint">Auto reads typed pages directly and OCRs only pages with no text layer.</div>
+          </div>
+          <div>
+            <div class="field-label"><span>Chunk size</span><span class="val" id="chunk-size-val">800 chars</span></div>
+            <input type="range" id="chunk-size" min="200" max="2000" step="50" value="800">
+            <div class="field-hint">Larger chunks keep more context together; smaller chunks retrieve more precisely.</div>
+          </div>
+          <div>
+            <div class="field-label"><span>Chunk overlap</span><span class="val" id="chunk-overlap-val">120 chars</span></div>
+            <input type="range" id="chunk-overlap" min="0" max="400" step="20" value="120">
+          </div>
+          <div>
+            <div class="field-label">Namespace</div>
+            <input type="text" id="namespace-input-upload" spellcheck="false">
+            <div class="field-hint">Documents in the same namespace are searched together.</div>
+          </div>
         </div>
+        <button class="btn btn-primary" style="margin-top:20px;" id="upload-btn"><i class="fa-solid fa-upload"></i> Read &amp; index selected files</button>
+      </div>
+    </section>
+
+    <!-- ======================= LIBRARY VIEW ======================= -->
+    <section class="view" id="view-library">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
         <div>
-          <h4 class="section-title" style="margin-top:0">Current settings</h4>
-          <div id="settings-kv"></div>
+          <h2 class="section-title" style="margin-top:0;"><i class="fa-solid fa-folder-open"></i> Document Library</h2>
+          <p class="section-sub" style="margin-bottom:0;">Every document currently indexed in this namespace.</p>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="refresh-docs-btn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+      </div>
+      <div class="doc-grid" id="doc-grid" style="margin-top:16px;"></div>
+    </section>
+
+    <!-- ======================= ASK VIEW ======================= -->
+    <section class="view" id="view-ask">
+      <h2 class="section-title" style="margin-top:0;"><i class="fa-solid fa-comment-dots"></i> Ask a question</h2>
+      <p class="section-sub">Answers are generated strictly from retrieved passages — grounded, never guessed.</p>
+
+      <div class="chat-shell">
+        <div class="card chat-window">
+          <div class="chat-log" id="chat-log">
+            <div class="empty-state" id="chat-empty">
+              <i class="fa-solid fa-comments"></i>
+              <p>No questions yet. Try one of the examples below, or type your own.</p>
+            </div>
+          </div>
+          <div class="chip-row" id="example-chips"></div>
+          <div class="chat-input-row">
+            <input type="text" id="question-input" placeholder="What is the termination notice period?">
+            <button class="btn btn-primary" id="ask-btn"><i class="fa-solid fa-paper-plane"></i></button>
+            <button class="btn btn-ghost" id="clear-chat-btn" title="Clear chat"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </div>
+
+        <div>
+          <div class="card" style="padding:20px; margin-bottom:16px;">
+            <div class="side-panel-title">Retrieval settings</div>
+            <div class="field-label"><span>Passages retrieved</span><span class="val" id="top-k-val">5</span></div>
+            <input type="range" id="top-k" min="1" max="15" step="1" value="5">
+            <div class="field-label" style="margin-top:16px;"><span>Similarity floor</span><span class="val" id="threshold-val">0.25</span></div>
+            <input type="range" id="threshold" min="0" max="1" step="0.05" value="0.25">
+            <div class="field-hint">Passages scoring below this never reach the language model.</div>
+          </div>
+          <div class="card" style="padding:20px;">
+            <div class="side-panel-title">Narrow the search</div>
+            <div id="doc-filter-list" style="font-size:12.5px; display:flex; flex-direction:column; gap:6px;">
+              <span class="field-hint">Upload a document to enable filtering.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= HISTORY VIEW ======================= -->
+    <section class="view" id="view-history">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h2 class="section-title" style="margin-top:0;"><i class="fa-solid fa-clock-rotate-left"></i> Retrieval History</h2>
+          <p class="section-sub" style="margin-bottom:0;">Every query, saved on the backend, kept across restarts.</p>
+        </div>
+        <input type="text" id="history-search" placeholder="Filter by keyword…" style="max-width:220px;">
+      </div>
+      <div class="card" style="padding:8px 16px; margin-top:16px;">
+        <div id="history-list"></div>
+      </div>
+    </section>
+
+    <!-- ======================= ANALYTICS VIEW ======================= -->
+    <section class="view" id="view-analytics">
+      <h2 class="section-title" style="margin-top:0;"><i class="fa-solid fa-chart-line"></i> Analytics</h2>
+      <p class="section-sub">Computed from real query logs and document records — nothing here is simulated.</p>
+
+      <div class="chart-grid">
+        <div class="card chart-card">
+          <div class="side-panel-title">Queries per day &amp; confidence trend</div>
+          <canvas id="chart-queries"></canvas>
+        </div>
+        <div class="card chart-card">
+          <div class="side-panel-title">Top cited pages</div>
+          <div class="top-pages-list" id="top-pages-list"></div>
         </div>
       </div>
 
-      <h4 class="section-title">API</h4>
-      <div class="hint">This backend is a standalone REST service — you can drive it without this page. Interactive docs at <span id="docs-link" style="font-family:var(--mono)"></span>.</div>
-      <pre class="api-ref">POST   /api/documents/upload    file, namespace, chunk_size, chunk_overlap, ocr_mode
+      <div class="chart-grid" style="margin-top:18px;">
+        <div class="card chart-card">
+          <div class="side-panel-title">Document activity (chunks indexed per document)</div>
+          <canvas id="chart-docs"></canvas>
+        </div>
+        <div class="card chart-card">
+          <div class="side-panel-title">Vector growth over time</div>
+          <canvas id="chart-vectors"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= SETTINGS VIEW ======================= -->
+    <section class="view" id="view-settings">
+      <h2 class="section-title" style="margin-top:0;"><i class="fa-solid fa-sliders"></i> Settings</h2>
+      <p class="section-sub">Retrieval and generation configuration for this session.</p>
+
+      <div class="card" style="padding:22px; margin-bottom:18px;">
+        <div class="config-grid">
+          <div>
+            <div class="field-label">Embedding model</div>
+            <select class="select-field" disabled><option>multilingual-e5-large (Pinecone-hosted)</option></select>
+            <div class="field-hint">Fixed for this deployment — embeddings run on Pinecone's Inference API, not locally.</div>
+          </div>
+          <div>
+            <div class="field-label">LLM provider</div>
+            <select class="select-field" disabled><option>Groq — openai/gpt-oss-20b</option></select>
+            <div class="field-hint">Fixed for this deployment. See backend/services/generator.py to change it.</div>
+          </div>
+          <div>
+            <div class="field-label"><span>Generation temperature</span><span class="val">0.0</span></div>
+            <input type="range" min="0" max="1" step="0.1" value="0" disabled style="opacity:.4;">
+            <div class="locked-note"><i class="fa-solid fa-lock"></i> Fixed at 0 by design — deterministic, non-creative output minimizes hallucination risk.</div>
+          </div>
+          <div>
+            <div class="field-label">Active namespace</div>
+            <input type="text" id="namespace-input-settings" spellcheck="false">
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:18px 22px;">
+        <div class="side-panel-title" style="margin-bottom:10px;">Danger zone</div>
+        <p class="field-hint" style="margin-bottom:12px;">Deletes every indexed passage in the active namespace. Cannot be undone.</p>
+        <button class="btn btn-danger btn-sm" id="clear-namespace-btn"><i class="fa-solid fa-triangle-exclamation"></i> Clear this knowledge base</button>
+      </div>
+    </section>
+
+    <!-- ======================= ABOUT VIEW ======================= -->
+    <section class="view" id="view-about">
+      <h2 class="section-title" style="margin-top:0;"><i class="fa-solid fa-circle-info"></i> About this project</h2>
+      <div class="card" style="padding:24px;">
+        <p style="color:var(--text-muted); font-size:13.5px; line-height:1.7;">
+          An intermediate Retrieval-Augmented Generation system built for an Applied LLM Systems assignment.
+          PDFs are parsed, chunked, embedded via Pinecone's hosted Inference API, indexed in a Pinecone
+          serverless vector database, and retrieved with cosine-similarity thresholding before an LLM
+          (Groq) generates an answer restricted strictly to the retrieved context. Every answer carries
+          its exact source: document name, page number, chunk ID, and similarity score.
+        </p>
+        <div class="about-grid">
+          <div class="card about-item"><div class="ai-label">Vector database</div><div class="ai-value">Pinecone (serverless)</div></div>
+          <div class="card about-item"><div class="ai-label">Embedding model</div><div class="ai-value">multilingual-e5-large</div></div>
+          <div class="card about-item"><div class="ai-label">LLM</div><div class="ai-value">Groq · openai/gpt-oss-20b</div></div>
+          <div class="card about-item"><div class="ai-label">Backend</div><div class="ai-value">FastAPI</div></div>
+          <div class="card about-item"><div class="ai-label">OCR engine</div><div class="ai-value">Tesseract</div></div>
+          <div class="card about-item"><div class="ai-label">Hallucination guardrails</div><div class="ai-value">Threshold + strict prompt + temp=0</div></div>
+        </div>
+      </div>
+
+      <h2 class="section-title"><i class="fa-solid fa-server"></i> System status</h2>
+      <div class="status-grid" id="status-grid"></div>
+
+      <h2 class="section-title"><i class="fa-solid fa-code"></i> API reference</h2>
+      <p class="section-sub">This UI is a client of a standalone REST API — drive it from curl, Swagger, or your own scripts.</p>
+      <pre class="code-block">POST   /api/documents/upload    file, namespace, chunk_size, chunk_overlap, ocr_mode
 GET    /api/documents           ?namespace=...
+DELETE /api/documents/{name}    ?namespace=...
 GET    /api/namespaces
 DELETE /api/namespaces/{name}
 POST   /api/query               question, namespace, top_k, similarity_threshold
 GET    /api/logs                ?limit=50
 GET    /api/health</pre>
 
-      <div id="ocr-help" style="display:none">
-        <h4 class="section-title">Enabling OCR</h4>
-        <div class="hint">OCR needs the Tesseract program, which pip can't install because it isn't a Python package.</div>
-        <ol style="font-size:0.85rem; line-height:1.7">
-          <li>Windows: install the <a href="https://github.com/UB-Mannheim/tesseract/wiki" target="_blank">UB Mannheim build</a>. macOS: <code>brew install tesseract</code>. Ubuntu/Debian: <code>sudo apt install tesseract-ocr</code>.</li>
-          <li>On Windows, add this to <code>.env</code> and restart the backend:</li>
-        </ol>
-        <pre class="api-ref">TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe</pre>
-      </div>
-    </div>
-  </div>
+      <footer class="app-footer">Built for a university RAG systems assignment · <a href="/docs" target="_blank">API docs</a></footer>
+    </section>
+
+  </main>
 </div>
 
-<script>
-(() => {
-  const API = ""; // same-origin: this page is served BY the backend
-  const $ = (sel) => document.querySelector(sel);
-  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
-
-  const state = {
-    namespace: localStorage.getItem("rag_namespace") || ("session-" + Math.random().toString(16).slice(2, 10)),
-    ocrMode: "auto",
-    chunkSize: 800, chunkOverlap: 120, topK: 5, threshold: 0.25,
-    documents: [], docFilter: new Set(),
-    history: [], health: null,
-  };
-
-  function esc(s) {
-    return String(s ?? "")
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
-
-  async function apiGet(path, params) {
-    const url = new URL(API + path, window.location.origin);
-    if (params) Object.entries(params).forEach(([k, v]) => v !== undefined && url.searchParams.set(k, v));
-    const r = await fetch(url);
-    return r;
-  }
-  async function apiPostJSON(path, body) {
-    return fetch(API + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  }
-  async function apiPostForm(path, formData) {
-    return fetch(API + path, { method: "POST", body: formData });
-  }
-  async function apiDelete(path) {
-    return fetch(API + path, { method: "DELETE" });
-  }
-  async function errorDetail(resp) {
-    try { const j = await resp.json(); return j.detail || resp.statusText; }
-    catch { return resp.statusText || ("HTTP " + resp.status); }
-  }
-
-  // ---------------- init ----------------
-  $("#namespace").value = state.namespace;
-  $("#docs-link").textContent = window.location.origin + "/docs";
-
-  async function init() {
-    try {
-      const r = await apiGet("/api/health");
-      state.health = await r.json();
-    } catch (e) {
-      $("#pills").innerHTML = `<span class="pill off">backend unreachable</span>`;
-      $(".main").innerHTML = `<div class="empty">Can't reach the backend. Make sure <code>uvicorn backend.main:app --reload --port 8000</code> is running and you're viewing this page from that same server.</div>`;
-      return;
-    }
-    renderPills();
-    renderSystemTab();
-    await refreshDocuments();
-  }
-
-  function renderPills() {
-    const h = state.health;
-    const pill = (label, ok) => `<span class="pill ${ok ? "on" : "off"}">${label} ${ok ? "ready" : "unavailable"}</span>`;
-    $("#pills").innerHTML =
-      pill("Pinecone", h.pinecone_connected) +
-      pill("Groq", h.groq_configured) +
-      pill("OCR", h.ocr_available) +
-      `<span class="pill">${esc(h.embedding_model)} · ${esc(h.embedding_device)}</span>` +
-      `<span class="pill">ns: ${esc(state.namespace)}</span>`;
-
-    const warn = $("#ocr-warn");
-    if (!h.ocr_available) {
-      warn.style.display = "block";
-      warn.textContent = "OCR unavailable — " + h.ocr_status;
-      $("#ocr-help").style.display = "block";
-    } else {
-      warn.style.display = "none";
-    }
-  }
-
-  async function refreshDocuments() {
-    const r = await apiGet("/api/documents", { namespace: state.namespace });
-    const body = r.ok ? await r.json() : { documents: [] };
-    state.documents = body.documents || [];
-    renderDocLists();
-    renderAskGate();
-  }
-
-  function renderDocLists() {
-    const filterPanel = $("#filter-panel");
-    const listEl = $("#doc-filter-list");
-    if (state.documents.length) {
-      filterPanel.style.display = "block";
-      listEl.innerHTML = state.documents.map(d => `
-        <label>
-          <input type="checkbox" data-doc="${esc(d)}" ${state.docFilter.has(d) ? "checked" : ""}>
-          <span class="doc-name">${esc(d)}</span>
-        </label>`).join("");
-      listEl.querySelectorAll("input[type=checkbox]").forEach(cb => {
-        cb.addEventListener("change", () => {
-          const name = cb.dataset.doc;
-          if (cb.checked) state.docFilter.add(name); else state.docFilter.delete(name);
-        });
-      });
-    } else {
-      filterPanel.style.display = "none";
-    }
-
-    const container = $("#doc-index-container");
-    container.innerHTML = state.documents.length
-      ? "<ul class='doc-index-list'>" + state.documents.map(d => `<li>${esc(d)}</li>`).join("") + "</ul>"
-      : "<div class='empty'>Nothing indexed yet.</div>";
-  }
-
-  function renderAskGate() {
-    const has = state.documents.length > 0;
-    $("#ask-empty").style.display = has ? "none" : "block";
-    $("#ask-ui").style.display = has ? "block" : "none";
-  }
-
-  // ---------------- sidebar wiring ----------------
-  $("#namespace").addEventListener("change", (e) => {
-    state.namespace = e.target.value.trim() || state.namespace;
-    localStorage.setItem("rag_namespace", state.namespace);
-    renderPills();
-    refreshDocuments();
-  });
-
-  $("#ocr-mode").querySelectorAll("button").forEach(btn => {
-    btn.addEventListener("click", () => {
-      $("#ocr-mode").querySelectorAll("button").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      state.ocrMode = btn.dataset.val;
-    });
-  });
-
-  const bindRange = (id, key, stateKeyEl, fmt) => {
-    const el = $("#" + id);
-    el.addEventListener("input", () => {
-      state[key] = parseFloat(el.value);
-      $("#" + stateKeyEl).textContent = fmt ? fmt(state[key]) : state[key];
-    });
-  };
-  bindRange("chunk-size", "chunkSize", "chunk-size-val");
-  bindRange("chunk-overlap", "chunkOverlap", "chunk-overlap-val");
-  bindRange("top-k", "topK", "top-k-val");
-  bindRange("threshold", "threshold", "threshold-val", (v) => v.toFixed(2));
-
-  $("#clear-btn").addEventListener("click", async () => {
-    if (!confirm(`Delete every indexed passage in namespace "${state.namespace}"? This can't be undone.`)) return;
-    const r = await apiDelete("/api/namespaces/" + encodeURIComponent(state.namespace));
-    if (r.ok) {
-      state.documents = [];
-      state.docFilter.clear();
-      renderDocLists();
-      renderAskGate();
-    } else {
-      alert("Could not clear namespace: " + (await errorDetail(r)));
-    }
-  });
-
-  // ---------------- tabs ----------------
-  $$(".tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-      $$(".tab").forEach(t => t.classList.remove("active"));
-      $$(".tabpanel").forEach(p => p.classList.remove("active"));
-      tab.classList.add("active");
-      $("#tab-" + tab.dataset.tab).classList.add("active");
-      if (tab.dataset.tab === "history") refreshLogs();
-      if (tab.dataset.tab === "system") renderSystemTab();
-    });
-  });
-
-  // ---------------- upload ----------------
-  const dropzone = $("#dropzone");
-  const fileInput = $("#file-input");
-  dropzone.addEventListener("click", () => fileInput.click());
-  ["dragenter", "dragover"].forEach(evt =>
-    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add("drag"); }));
-  ["dragleave", "drop"].forEach(evt =>
-    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove("drag"); }));
-  dropzone.addEventListener("drop", (e) => handleFiles(e.dataTransfer.files));
-  fileInput.addEventListener("change", (e) => handleFiles(e.target.files));
-
-  async function handleFiles(fileList) {
-    const files = Array.from(fileList).filter(f => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
-    if (!files.length) return;
-
-    const progressEl = $("#upload-progress");
-    progressEl.innerHTML = files.map(f => `
-      <div class="file-row" data-file="${esc(f.name)}">
-        <span>${esc(f.name)}</span>
-        <span class="status pending"><span class="spinner"></span>reading…</span>
-      </div>`).join("");
-
-    for (const f of files) {
-      const row = progressEl.querySelector(`.file-row[data-file="${CSS.escape(f.name)}"] .status`);
-      const form = new FormData();
-      form.append("file", f);
-      form.append("namespace", state.namespace);
-      form.append("chunk_size", state.chunkSize);
-      form.append("chunk_overlap", state.chunkOverlap);
-      form.append("ocr_mode", state.ocrMode);
-      try {
-        const r = await apiPostForm("/api/documents/upload", form);
-        if (r.ok) {
-          const body = await r.json();
-          const ocrNote = body.pages_via_ocr ? ` · ${body.pages_via_ocr} page(s) via OCR` : "";
-          row.className = "status ok";
-          row.textContent = `${body.pages_extracted} pages, ${body.chunks_indexed} passages${ocrNote}`;
-        } else {
-          row.className = "status err";
-          row.textContent = await errorDetail(r);
-        }
-      } catch (e) {
-        row.className = "status err";
-        row.textContent = "network error";
-      }
-    }
-    fileInput.value = "";
-    await refreshDocuments();
-  }
-
-  // ---------------- ask ----------------
-  $("#ask-btn").addEventListener("click", runAsk);
-  $("#question").addEventListener("keydown", (e) => { if (e.key === "Enter") runAsk(); });
-
-  async function runAsk() {
-    const q = $("#question").value.trim();
-    const resultEl = $("#ask-result");
-    if (!q) { resultEl.innerHTML = `<div class="toast err">Type a question first.</div>`; return; }
-
-    resultEl.innerHTML = `<div class="hint"><span class="spinner"></span>Searching the documents…</div>`;
-
-    const payload = {
-      question: q,
-      namespace: state.namespace,
-      top_k: state.topK,
-      similarity_threshold: state.threshold,
-      document_filter: state.docFilter.size ? Array.from(state.docFilter) : null,
-      page_min: null, page_max: null,
-    };
-    let r;
-    try { r = await apiPostJSON("/api/query", payload); }
-    catch (e) { resultEl.innerHTML = `<div class="toast err">Network error reaching the backend.</div>`; return; }
-
-    if (!r.ok) { resultEl.innerHTML = `<div class="toast err">${esc(await errorDetail(r))}</div>`; return; }
-    const result = await r.json();
-    renderAnswer(resultEl, q, result);
-
-    state.history.unshift({
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-      question: q, answer: result.answer, grounded: result.used_context,
-      confidence: result.confidence,
-      sources: result.sources.map(s => `${s.document_name} p.${s.page_number} (${s.similarity_score.toFixed(2)})`),
-    });
-  }
-
-  function renderAnswer(el, question, result) {
-    const grounded = result.used_context;
-    let html = `
-      <div class="answer ${grounded ? "" : "absent"}">
-        <span class="eyebrow">${grounded ? "Answer — drawn from the documents" : "Not found in these documents"}</span>
-        <div class="body">${esc(result.answer)}</div>
-      </div>`;
-
-    if (grounded) {
-      const conf = Math.round(result.confidence * 100);
-      html += `
-        <div class="meter"><div class="track"><div class="fill" style="width:${conf}%"></div></div>
-        <span class="lbl">retrieval confidence ${conf}% · ${result.sources.length} passage(s) used</span></div>
-        <h4 class="section-title">Where this came from</h4>`;
-      result.sources.forEach((s, i) => {
-        const score = Math.round(s.similarity_score * 100);
-        html += `
-          <div class="exhibit">
-            <div class="head">
-              <span class="stamp">${i + 1} · PAGE ${s.page_number}</span>
-              <span class="docname">${esc(s.document_name)}</span>
-            </div>
-            <div class="excerpt">${esc(s.excerpt)}</div>
-            <div class="meter"><div class="track"><div class="fill" style="width:${score}%"></div></div>
-            <span class="lbl">similarity ${s.similarity_score.toFixed(3)}</span></div>
-          </div>`;
-      });
-    } else {
-      html += `<div class="hint">Nothing in the indexed pages scored above the similarity floor. Lower it in the sidebar, or add the document that covers this.</div>`;
-    }
-    el.innerHTML = html;
-  }
-
-  // ---------------- history ----------------
-  function renderSessionHistory() {
-    const el = $("#session-history");
-    if (!state.history.length) { el.innerHTML = `<div class="empty">No questions asked yet.</div>`; return; }
-    el.innerHTML = state.history.map(item => `
-      <div class="answer ${item.grounded ? "" : "absent"}" style="margin-bottom:10px">
-        <span class="eyebrow">${item.time} · ${esc(item.question)}</span>
-        <div class="body">${esc(item.answer)}</div>
-      </div>
-      ${item.sources.length ? `<div class="hint" style="margin:-2px 0 12px 2px">${item.sources.map(esc).join(" · ")} — confidence ${Math.round(item.confidence * 100)}%</div>` : ""}
-    `).join("");
-  }
-
-  async function refreshLogs() {
-    renderSessionHistory();
-    const el = $("#logs-container");
-    const r = await apiGet("/api/logs", { limit: 50 });
-    const logs = r.ok ? await r.json() : [];
-    if (!logs.length) { el.innerHTML = `<div class="empty">Log is empty.</div>`; return; }
-    const cols = ["timestamp_utc", "namespace", "question", "num_chunks_used", "used_context", "confidence", "answer_preview"];
-    el.innerHTML = `<table class="logs"><thead><tr>${cols.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>${
-      logs.map(row => `<tr>${cols.map(c => `<td>${esc(row[c])}</td>`).join("")}</tr>`).join("")
-    }</tbody></table>`;
-  }
-
-  // ---------------- system tab ----------------
-  function renderSystemTab() {
-    if (!state.health) return;
-    const h = state.health;
-    const kv = (rows) => rows.map(([k, v]) => `<div class="kv"><span class="k">${k}</span><span class="v">${esc(v)}</span></div>`).join("");
-    $("#services-kv").innerHTML = kv([
-      ["Backend", window.location.origin],
-      ["Pinecone", h.pinecone_connected ? "connected" : "not connected"],
-      ["Groq API key", h.groq_configured ? "configured" : "missing"],
-      ["Embedding model", h.embedding_model],
-      ["Compute device", h.embedding_device],
-      ["OCR", h.ocr_status],
-    ]);
-    $("#settings-kv").innerHTML = kv([
-      ["Namespace", state.namespace],
-      ["OCR mode", state.ocrMode],
-      ["Chunk size", state.chunkSize + " chars"],
-      ["Chunk overlap", state.chunkOverlap + " chars"],
-      ["Passages retrieved", state.topK],
-      ["Similarity floor", state.threshold.toFixed(2)],
-      ["Documents indexed", state.documents.length],
-    ]);
-  }
-
-  init();
-})();
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+<script src="script.js"></script>
 </body>
 </html>

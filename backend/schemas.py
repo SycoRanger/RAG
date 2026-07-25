@@ -35,6 +35,7 @@ class QueryRequest(BaseModel):
 class SourceItem(BaseModel):
     document_name: str
     page_number: int
+    chunk_id: str
     excerpt: str
     similarity_score: float
 
@@ -46,9 +47,17 @@ class QueryResponse(BaseModel):
     sources: list[SourceItem]
 
 
+class DocumentInfo(BaseModel):
+    name: str
+    pages: int
+    chunks: int
+    ocr_pages: int
+    uploaded_at: str
+
+
 class DocumentsResponse(BaseModel):
     namespace: str
-    documents: list[str]
+    documents: list[DocumentInfo]
 
 
 class NamespacesResponse(BaseModel):

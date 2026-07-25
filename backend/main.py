@@ -26,7 +26,7 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.config import settings
 from backend.schemas import (
-    DocumentsResponse, ErrorResponse, HealthResponse, LogEntry,
+    DocumentInfo, DocumentsResponse, ErrorResponse, HealthResponse, LogEntry,
     NamespacesResponse, QueryRequest, QueryResponse, SourceItem, UploadResponse,
 )
 from backend.services import registry, vector_store
@@ -100,7 +100,13 @@ async def upload_document(
     except VectorStoreError as e:
         raise HTTPException(status_code=502, detail=str(e))
 
-    registry.add_document(namespace, file.filename)
+    registry.add_document(
+        namespace,
+        file.filename,
+        pages=len(pages),
+        chunk_ids=[c.chunk_id for c in chunks],
+        ocr_pages=sum(1 for p in pages if p.via_ocr),
+    )
 
     return UploadResponse(
         document_name=file.filename,
@@ -114,7 +120,37 @@ async def upload_document(
 
 @app.get("/api/documents", response_model=DocumentsResponse, tags=["documents"])
 def list_documents(namespace: str = Query(...)):
-    return DocumentsResponse(namespace=namespace, documents=registry.list_documents(namespace))
+    records = registry.list_documents(namespace)
+    return DocumentsResponse(
+        namespace=namespace,
+        documents=[
+            DocumentInfo(
+                name=d["name"],
+                pages=d.get("pages", 0),
+                chunks=len(d.get("chunk_ids", [])),
+                ocr_pages=d.get("ocr_pages", 0),
+                uploaded_at=d.get("uploaded_at", ""),
+            )
+            for d in records
+        ],
+    )
+
+
+@app.delete("/api/documents/{document_name}", tags=["documents"],
+            responses={404: {"model": ErrorResponse}, 502: {"model": ErrorResponse}})
+def delete_document(document_name: str, namespace: str = Query(...)):
+    """Delete a single document: its vectors (by exact chunk ID, not
+    metadata filter -- see vector_store.delete_by_ids for why) and its
+    registry record."""
+    record = registry.get_document(namespace, document_name)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"'{document_name}' not found in namespace '{namespace}'.")
+    try:
+        vector_store.delete_by_ids(record.get("chunk_ids", []), namespace=namespace)
+    except VectorStoreError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    registry.remove_document(namespace, document_name)
+    return {"status": "deleted", "namespace": namespace, "document_name": document_name}
 
 
 @app.get("/api/namespaces", response_model=NamespacesResponse, tags=["documents"])
@@ -178,6 +214,7 @@ def query(req: QueryRequest):
             SourceItem(
                 document_name=s.document_name,
                 page_number=s.page_number,
+                chunk_id=s.chunk_id,
                 excerpt=truncate(s.text, 500),
                 similarity_score=s.score,
             )

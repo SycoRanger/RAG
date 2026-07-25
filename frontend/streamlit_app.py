@@ -228,7 +228,8 @@ with st.sidebar:
     )
 
     docs_resp = api_get("/api/documents", params={"namespace": st.session_state.namespace})
-    documents = docs_resp.json().get("documents", []) if docs_resp.ok else []
+    document_records = docs_resp.json().get("documents", []) if docs_resp.ok else []
+    documents = [d["name"] for d in document_records]  # names only, for filters/counts
 
     doc_filter, page_range = [], None
     if documents:
@@ -329,9 +330,10 @@ with tab_add:
                 st.error(f"**{r['name']}** — {r['body']}")
 
     st.markdown("##### In this knowledge base")
-    if documents:
-        for d in documents:
-            st.markdown(f"- {d}")
+    if document_records:
+        for d in document_records:
+            ocr_note = f" · {d['ocr_pages']} page(s) via OCR" if d.get("ocr_pages") else ""
+            st.markdown(f"- **{d['name']}** — {d['pages']} pages, {d['chunks']} chunks{ocr_note}")
     else:
         st.markdown(
             '<div class="rag-empty">Nothing indexed yet. Add a PDF above to start asking questions.</div>',

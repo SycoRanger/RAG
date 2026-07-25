@@ -146,3 +146,19 @@ def clear_namespace(namespace: str) -> None:
         index.delete(delete_all=True, namespace=namespace)
     except PineconeException as e:
         raise VectorStoreError(f"Failed to clear namespace '{namespace}': {e}") from e
+
+
+def delete_by_ids(ids: list[str], namespace: str) -> None:
+    """Delete specific vectors by their exact IDs. Used for single-document
+    removal -- explicit-ID delete is universally supported on Pinecone
+    serverless, unlike metadata-filter delete, whose support has varied
+    across serverless index versions."""
+    if not ids:
+        return
+    index = ensure_index()
+    try:
+        # Pinecone caps delete batch size; chunk defensively same as upsert.
+        for i in range(0, len(ids), _UPSERT_BATCH_SIZE):
+            index.delete(ids=ids[i : i + _UPSERT_BATCH_SIZE], namespace=namespace)
+    except PineconeException as e:
+        raise VectorStoreError(f"Failed to delete document vectors: {e}") from e
